@@ -1,0 +1,49 @@
+# WitheredRose
+
+Hypixel State Overlay
+
+**下载**：[WitheredRose-Setup.exe](https://suzume.cloud/downloads/WitheredRose-Setup.exe) · 项目页：[suzume.cloud/projects/witheredrose](https://suzume.cloud/projects/witheredrose)
+
+## 使用文档
+
+此项目为Hypixel Bedwars State Overlay
+
+![](https://suzume.cloud/uploads/1790404656851-384ede2e17c9.png)
+![](https://suzume.cloud/uploads/1790404663957-4f44025bd9da.png)
+![](https://suzume.cloud/uploads/1790404670142-87c83cf8e1c6.png)
+
+### 使用教程
+
+Hypixel 起床战争战绩查询 + 游戏内悬浮窗工具，自动读取本局名单并把战绩悬浮显示在游戏画面上
+
+1. 前往 **developer.hypixel.net** 获取 **API Key**（复制后切回软件会自动弹窗询问是否使用）
+2. "Player Lookup" 页填写：**API Key**、自己的 **ID**
+3. 点击 **Save Settings & Start Watching**
+
+### 功能列表
+
+- **Stat Card**：自动显示你的战绩
+- **Player Lookup**：调节悬浮窗透明度/大小
+- **AutoWho**（开局自动发送 /who）
+- **Window Tools**：选中游戏窗口，一键去边框/无边框全屏
+- 标题栏"托盘"按钮 = 最小化到后台；右上角 X = 真正退出
+- 右上角可切换中/英文界面
+
+### 常见问题
+
+- **悬浮窗不显示**：游戏需为窗口化或无边框全屏，独占全屏下无法显示（Window Tools 页一键转换）
+- **查询超时/失败**：服务器在国外，网络不稳定可尝试代理
+- **提示找不到玩家**：对方开启了昵称隐藏
+
+更详细的说明见 [WitheredRose-使用教程.md](WitheredRose-使用教程.md)
+
+## 从源码构建
+
+需要 .NET 8 SDK，Inno Setup 6
+
+```bat
+dotnet publish HypixelStatsOverlay\HypixelStatsOverlay.csproj -c Release -r win-x64 --self-contained true
+ISCC installer\WitheredRose.iss
+```
+
+安装包输出到 `installer\output\WitheredRose-Setup.exe`
