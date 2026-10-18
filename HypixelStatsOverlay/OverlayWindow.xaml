@@ -1,0 +1,150 @@
+<Window x:Class="HypixelStatsOverlay.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:HypixelStatsOverlay.Converters"
+        Title="WitheredRose Overlay"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        SizeToContent="WidthAndHeight"
+        Focusable="False">
+    <Window.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis"/>
+        <conv:BedwarsLevelToBrushConverter x:Key="LevelToBrush"/>
+        <conv:FkdrToBrushConverter x:Key="FkdrToBrush"/>
+        <conv:HexColorToBrushConverter x:Key="HexToBrush"/>
+        <Style x:Key="Cell" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontFamily" Value="./Fonts/#Monocraft"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+        <Style x:Key="HeaderCell" TargetType="TextBlock" BasedOn="{StaticResource Cell}">
+            <Setter Property="Foreground" Value="#8B1E28"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <!-- Rank tag and name share the same (non-bold) weight so they read as one continuous
+             string, e.g. "[MVP+] PlayerName" - matching how Hypixel itself renders the tab list,
+             rather than a bold tag bolted onto a plain name. -->
+        <Style x:Key="RankSegment" TargetType="TextBlock" BasedOn="{StaticResource Cell}"/>
+        <Style x:Key="NameCell" TargetType="TextBlock" BasedOn="{StaticResource Cell}">
+            <!-- Matches Hypixel's own chat/tab rendering: the name is colored the same as the rank
+                 tag next to it (aqua for MVP, green for VIP, gray for no rank), not plain white. -->
+            <Setter Property="Foreground" Value="{Binding RankColorHex, Converter={StaticResource HexToBrush}}"/>
+            <Style.Triggers>
+                <!-- Color comes from RankColorHex like everyone else (the own-player rank override
+                     sets that to gold for MVP++); only the bold weight marks this as "you". -->
+                <DataTrigger Binding="{Binding IsOwnPlayer}" Value="True">
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </DataTrigger>
+                <!-- A failed lookup almost always means a nick plugin is hiding the real IGN. -->
+                <DataTrigger Binding="{Binding IsNicked}" Value="True">
+                    <Setter Property="Foreground" Value="#FF5555"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Border x:Name="RootBorder" Background="#CC101010" CornerRadius="3" BorderBrush="#8B1E28" BorderThickness="1">
+            <Border.LayoutTransform>
+                <ScaleTransform x:Name="ContentScale" ScaleX="1" ScaleY="1"/>
+            </Border.LayoutTransform>
+            <StackPanel Margin="4">
+                <!-- Header -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="55"/>
+                        <ColumnDefinition Width="55"/>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="80"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="HeaderPlayer" Grid.Column="0" Style="{StaticResource HeaderCell}"/>
+                    <TextBlock x:Name="HeaderStar" Grid.Column="1" Style="{StaticResource HeaderCell}"/>
+                    <TextBlock x:Name="HeaderStreak" Grid.Column="2" Style="{StaticResource HeaderCell}"/>
+                    <TextBlock x:Name="HeaderFkdr" Grid.Column="3" Style="{StaticResource HeaderCell}"/>
+                    <TextBlock x:Name="HeaderWins" Grid.Column="4" Style="{StaticResource HeaderCell}"/>
+                    <TextBlock x:Name="HeaderBeds" Grid.Column="5" Style="{StaticResource HeaderCell}"/>
+                    <TextBlock x:Name="HeaderFinals" Grid.Column="6" Style="{StaticResource HeaderCell}"/>
+                </Grid>
+                <Border Height="1" Background="#66FB101C" Margin="2,0,2,2"/>
+
+                <ItemsControl ItemsSource="{Binding Players}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="55"/>
+                                    <ColumnDefinition Width="55"/>
+                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="80"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Grid Grid.Column="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding RankPrefix}" Style="{StaticResource RankSegment}"
+                                               Foreground="{Binding RankColorHex, Converter={StaticResource HexToBrush}}"
+                                               Padding="6,3,0,3"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding RankPlus}" Style="{StaticResource RankSegment}"
+                                               Foreground="{Binding RankPlusColorHex, Converter={StaticResource HexToBrush}}"
+                                               Padding="0,3,0,3"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding RankSuffix}" Style="{StaticResource RankSegment}"
+                                               Foreground="{Binding RankColorHex, Converter={StaticResource HexToBrush}}"
+                                               Padding="0,3,2,3"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding Name}" Style="{StaticResource NameCell}"
+                                               Padding="0,3,0,3"/>
+                                </Grid>
+
+                                <TextBlock Grid.Column="1" Style="{StaticResource Cell}"
+                                           Text="{Binding BedwarsLevel, StringFormat={}{0:0}✫}"
+                                           Foreground="{Binding BedwarsLevel, Converter={StaticResource LevelToBrush}}"
+                                           FontWeight="Bold"
+                                           Visibility="{Binding IsSpecialStatus, Converter={StaticResource InverseBoolToVis}}"/>
+                                <TextBlock Grid.Column="2" Style="{StaticResource Cell}"
+                                           Text="{Binding WinStreakText}"
+                                           Visibility="{Binding IsSpecialStatus, Converter={StaticResource InverseBoolToVis}}"/>
+                                <TextBlock Grid.Column="3" Style="{StaticResource Cell}"
+                                           Text="{Binding Fkdr, StringFormat={}{0:0.00}}"
+                                           Foreground="{Binding Fkdr, Converter={StaticResource FkdrToBrush}}"
+                                           FontWeight="Bold"
+                                           Visibility="{Binding IsSpecialStatus, Converter={StaticResource InverseBoolToVis}}"/>
+                                <TextBlock Grid.Column="4" Style="{StaticResource Cell}"
+                                           Text="{Binding Wins}"
+                                           Visibility="{Binding IsSpecialStatus, Converter={StaticResource InverseBoolToVis}}"/>
+                                <TextBlock Grid.Column="5" Style="{StaticResource Cell}"
+                                           Text="{Binding BedsBroken}"
+                                           Visibility="{Binding IsSpecialStatus, Converter={StaticResource InverseBoolToVis}}"/>
+                                <TextBlock Grid.Column="6" Style="{StaticResource Cell}"
+                                           Text="{Binding FinalKills}"
+                                           Visibility="{Binding IsSpecialStatus, Converter={StaticResource InverseBoolToVis}}"/>
+
+                                <TextBlock Grid.Column="1" Grid.ColumnSpan="6" Style="{StaticResource Cell}"
+                                           Foreground="#FF6666" Text="{Binding StatusTextEnglish}"
+                                           Visibility="{Binding IsSpecialStatus, Converter={StaticResource BoolToVis}}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,7 @@
+# build output
+bin/
+obj/
+.vs/
+*.user
+installer/output/
+.claude/

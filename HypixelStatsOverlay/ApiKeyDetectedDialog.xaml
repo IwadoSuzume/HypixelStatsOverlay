@@ -1,0 +1,116 @@
+<Window x:Class="HypixelStatsOverlay.ApiKeyDetectedDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WitheredRose" Width="420" SizeToContent="Height"
+        WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        AllowsTransparency="True" Background="Transparent">
+    <Window.Resources>
+        <!-- Same FACEIT-style palette as MainWindow/StatCard - flat near-black surfaces, sharp
+             corners, one signature accent - so this popup doesn't look like a bare OS MessageBox. -->
+        <SolidColorBrush x:Key="CardBrush" Color="#1B1D22"/>
+        <SolidColorBrush x:Key="InsetBrush" Color="#131418"/>
+        <SolidColorBrush x:Key="BorderBrushColor" Color="#2B2E35"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#8B1E28"/>
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#A0474F"/>
+        <SolidColorBrush x:Key="AccentPressedBrush" Color="#681716"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#F2F3F5"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#82868F"/>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="4" Background="{StaticResource AccentBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentPressedBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource InsetBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="24">
+        <!-- Glow: a solid-red copy of the card, blurred and sat behind it - same trick as the
+             splash screen, so this reads as one consistent app rather than a generic dialog. -->
+        <Border Background="{StaticResource AccentBrush}" CornerRadius="8" Opacity="0.35">
+            <Border.Effect>
+                <BlurEffect Radius="24"/>
+            </Border.Effect>
+        </Border>
+
+        <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrushColor}"
+                BorderThickness="1" CornerRadius="8" MouseLeftButtonDown="Card_MouseLeftButtonDown">
+            <StackPanel Margin="20,18,20,20">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="4" Height="18" Background="{StaticResource AccentBrush}" CornerRadius="2" Margin="0,0,10,0"/>
+                        <TextBlock x:Name="TitleText" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                    </StackPanel>
+                    <Button x:Name="CloseButton" Content="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                            Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Background="Transparent" BorderThickness="0" Foreground="{StaticResource MutedBrush}"
+                            Cursor="Hand" Click="IgnoreButton_Click"/>
+                </Grid>
+
+                <TextBlock x:Name="BodyText" TextWrapping="Wrap" FontSize="13" Foreground="{StaticResource MutedBrush}"
+                           Margin="0,12,0,0"/>
+
+                <Border Background="{StaticResource InsetBrush}" BorderBrush="{StaticResource BorderBrushColor}"
+                        BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,12,0,0">
+                    <TextBlock x:Name="KeyText" FontFamily="Consolas" FontSize="13" Foreground="{StaticResource TextBrush}"
+                               TextWrapping="Wrap" TextAlignment="Center"/>
+                </Border>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                    <Button x:Name="IgnoreButton" Style="{StaticResource SecondaryButton}"
+                            Click="IgnoreButton_Click" Margin="0,0,10,0"/>
+                    <Button x:Name="UseKeyButton" Style="{StaticResource PrimaryButton}" Click="UseKeyButton_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

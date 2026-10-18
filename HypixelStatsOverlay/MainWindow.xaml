@@ -1,0 +1,1034 @@
+<Window x:Class="HypixelStatsOverlay.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:HypixelStatsOverlay.Converters"
+        Title="WitheredRose" Height="710" Width="920"
+        ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        Icon="Assets/logo.ico"
+        Background="#0B0C0E">
+    <Window.Resources>
+        <conv:BedwarsLevelToBrushConverter x:Key="LevelToBrush"/>
+        <conv:FkdrToBrushConverter x:Key="FkdrToBrush"/>
+        <conv:HexColorToBrushConverter x:Key="HexToBrush"/>
+        <conv:ProgressToStarConverter x:Key="ProgressToStar"/>
+
+        <!-- Stat-card value coloring, matching the reference design: green for "made" stats,
+             red for "lost" stats, and the app's own withered-rose accent red for ratios. -->
+        <SolidColorBrush x:Key="StatMadeBrush" Color="#55FF55"/>
+        <SolidColorBrush x:Key="StatLostBrush" Color="#FF5555"/>
+        <!-- FACEIT-style layout retained (flat near-black surfaces, sharp corners, one signature
+             accent) but the accent itself is now the withered-rose red instead of FACEIT orange. -->
+        <SolidColorBrush x:Key="CardBrush" Color="#1B1D22"/>
+        <SolidColorBrush x:Key="InsetBrush" Color="#131418"/>
+        <SolidColorBrush x:Key="BorderBrushColor" Color="#2B2E35"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#8B1E28"/>
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#A0474F"/>
+        <SolidColorBrush x:Key="AccentPressedBrush" Color="#681716"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#F2F3F5"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#82868F"/>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+
+        <!-- BasedOn the implicit TextBlock style below - an explicitly-keyed style doesn't inherit
+             from it automatically, so without this the Foreground would fall back to WPF's default
+             black, unreadable against these dark cards. -->
+        <Style x:Key="SectionLabel" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <Style x:Key="HintText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,6,0,0"/>
+        </Style>
+
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource InsetBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="SelectionBrush" Value="#55FB101C"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="9,7"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,6,0,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Same look as ModernTextBox, but for the masked PasswordBox half of the API key field. -->
+        <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
+            <Setter Property="Background" Value="{StaticResource InsetBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="SelectionBrush" Value="#55FB101C"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="9,7"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Eye icon (Segoe MDL2 Assets) that toggles between the masked PasswordBox and plain TextBox. -->
+        <Style x:Key="EyeToggle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Background" Value="{StaticResource InsetBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Content" Value="&#xE890;"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Content" Value="&#xED1A;"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Paste icon (Segoe MDL2 Assets), same footprint as EyeToggle so it sits flush beside it. -->
+        <Style x:Key="PasteButton" TargetType="Button">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Background" Value="{StaticResource InsetBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Content" Value="&#xF0E3;"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Primary action: FACEIT's signature solid-orange rectangular pill, bold text, sharp-ish
+             corners (4px) rather than the previous frosted-glass rounded pill. -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="0,12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="4" Background="{StaticResource AccentBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentPressedBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource InsetBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Flat solid card: opaque dark surface + 1px border, no blur/translucency, small radius. -->
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
+        </Style>
+
+        <!-- Drag-to-adjust slider: dark track, orange fill up to the thumb. -->
+        <Style x:Key="ModernSlider" TargetType="Slider">
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid VerticalAlignment="Center">
+                            <Border Height="4" Background="{StaticResource InsetBrush}" CornerRadius="2"/>
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate>
+                                                <Border Height="4" Background="{StaticResource AccentBrush}" CornerRadius="2"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge" Opacity="0" Background="Transparent"/>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="16" Height="16" Cursor="Hand">
+                                        <Thumb.Template>
+                                            <ControlTemplate>
+                                                <Ellipse Fill="White" Stroke="{StaticResource AccentBrush}" StrokeThickness="2"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- "预览" toggle: outlined by default, solid orange fill while checked (previewing). -->
+        <Style x:Key="ToggleChip" TargetType="ToggleButton">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd" Background="Transparent"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Custom title bar buttons, since WindowStyle="None" drops the native ones entirely. -->
+        <Style x:Key="TitleBarButton" TargetType="Button">
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1FFFFFFF"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Language toggle: same footprint as the other title-bar buttons, but auto-width since
+             "中文"/"EN" aren't a fixed glyph size. -->
+        <Style x:Key="LangToggleButton" TargetType="Button">
+            <Setter Property="Width" Value="Auto"/>
+            <Setter Property="MinWidth" Value="36"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1FFFFFFF"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TitleBarCloseButton" TargetType="Button">
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#E81123"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Tabs: flat underline style, active tab gets a solid orange bottom border - FACEIT's
+             standard nav-tab treatment. -->
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <DockPanel Background="{TemplateBinding Background}">
+                            <TabPanel DockPanel.Dock="Top" IsItemsHost="True" Background="Transparent" Margin="0,0,0,14"/>
+                            <ContentPresenter ContentSource="SelectedContent"/>
+                        </DockPanel>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="18,9"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent"
+                                BorderThickness="0,0,0,3" Margin="0,0,18,0">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Pill switch used for AutoWho: dark track by default, orange track when checked, white thumb
+             slides left-to-right. Track/thumb are their own SolidColorBrush/TranslateTransform instances
+             (not shared StaticResources) so each control instance gets unfrozen brushes, which animating
+             Background.Color and the thumb's X requires. -->
+        <Style x:Key="AppleSwitch" TargetType="ToggleButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid Width="46" Height="26">
+                            <Border x:Name="Track" CornerRadius="13">
+                                <Border.Background>
+                                    <SolidColorBrush x:Name="TrackBrush" Color="#33363E"/>
+                                </Border.Background>
+                            </Border>
+                            <Ellipse x:Name="Thumb" Width="20" Height="20" Fill="White"
+                                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="3,0,0,0">
+                                <Ellipse.RenderTransform>
+                                    <TranslateTransform x:Name="ThumbTransform" X="0"/>
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="TrackBrush" Storyboard.TargetProperty="Color"
+                                                             To="#8B1E28" Duration="0:0:0.18"/>
+                                            <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X"
+                                                              To="20" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="TrackBrush" Storyboard.TargetProperty="Color"
+                                                             To="#33363E" Duration="0:0:0.18"/>
+                                            <DoubleAnimation Storyboard.TargetName="ThumbTransform" Storyboard.TargetProperty="X"
+                                                              To="0" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Layer 0: flat near-black wash (no blurred ambient blobs) - FACEIT's dashboards sit on a
+             single dark surface, not a soft gradient mesh. -->
+        <Rectangle>
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                    <GradientStop Color="#17181C" Offset="0"/>
+                    <GradientStop Color="#0E0F12" Offset="0.4"/>
+                    <GradientStop Color="#0B0C0E" Offset="1"/>
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+
+        <!-- Layer 1: soft rose-tinted glow easing out of the top-right corner - an ambient light
+             source rather than the previous hard-edged diagonal banner. Sized and offset so its
+             center sits exactly on the window's top-right corner; the window's own bounds (not an
+             explicit clip) cut it down to just the quarter-circle that falls inside. -->
+        <Ellipse Width="640" Height="640" HorizontalAlignment="Right" VerticalAlignment="Top"
+                 Margin="0,-320,-320,0" IsHitTestVisible="False">
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Color="#33FB101C" Offset="0"/>
+                    <GradientStop Color="#00FB101C" Offset="1"/>
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+
+        <!-- Layer 1.5: faint signature watermark, echoing the diagonal rose-accent motif above -
+             low-opacity white on the near-black wash so it reads as an etched mark, not a logo.
+             Kept fully inside the window bounds (no negative margin) since the outer Grid doesn't
+             clip - anything hanging past the edge would just get cut off by the window itself and
+             shrink the visible portion even further than the low opacity already does. -->
+        <Image Source="Assets/signature_watermark.png" Opacity="0.025" Stretch="Uniform"
+               Width="560" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+               Margin="0,0,10,10" IsHitTestVisible="False"
+               RenderOptions.BitmapScalingMode="HighQuality"/>
+
+        <!-- Layer 2: custom title bar (replaces the native one - WindowStyle="None"). The empty
+             middle column is the drag handle; buttons sit outside it so they stay clickable. -->
+        <Grid VerticalAlignment="Top" Height="38">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Rectangle Grid.Column="0" Grid.ColumnSpan="2" Fill="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"/>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="LanguageToggleButton" Style="{StaticResource LangToggleButton}"
+                        ToolTip="Switch language / 切换语言" Click="LanguageToggleButton_Click"/>
+                <Button x:Name="TrayButton" Content="&#x25BC;" FontSize="10"
+                        Style="{StaticResource TitleBarButton}" Click="TrayButton_Click"/>
+                <Button Content="&#xE921;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource TitleBarButton}"
+                        Click="MinimizeButton_Click"/>
+                <Button x:Name="CloseButtonTitleBar" Content="&#xE8BB;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource TitleBarCloseButton}"
+                        Click="CloseButton_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Layer 3: content, arranged landscape - a header band on top, then two side-by-side
+             columns instead of one long vertical stack. Fixed-size window (ResizeMode=CanMinimize),
+             so this is laid out to fit exactly rather than scroll. -->
+        <Grid Margin="24,40,24,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                <Image x:Name="HeaderLogoImage" Source="Assets/logo.png" Width="50" Height="50" Stretch="Uniform" Margin="0,0,14,0"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="HeaderTagText" FontSize="10" FontWeight="Bold"
+                               Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock Text="WitheredRose" FontSize="21" FontWeight="Bold" Margin="0,1,0,0"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Border Grid.Row="1" Height="1" Margin="0,0,0,18">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#FB101C" Offset="0"/>
+                        <GradientStop Color="#002B2E35" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <TabControl Grid.Row="2">
+            <TabItem x:Name="TabStatCard">
+                <!-- The pixel font's line-height runs taller than its point size suggests, and the window
+                     can't grow (ResizeMode=CanMinimize) - scroll rather than risk silently clipping stats. -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel HorizontalAlignment="Center" Margin="0,10,0,10">
+                    <!-- Live data-bound panel (no image export/generation), styled after the reference
+                         screenshot: pixel font, level progress bar between two star badges, a coins/games/
+                         most-played info row, then made/lost/ratio stat rows colored green/red/orange. -->
+                    <Border x:Name="StatCardBorder" Width="560" CornerRadius="8" TextElement.FontFamily="./Fonts/#Monocraft"
+                            BorderThickness="1" BorderBrush="{StaticResource BorderBrushColor}">
+                        <!-- Glow tinted to the player's Bedwars level tier (same colors as the star badges
+                             below), so a glance at the card's edge already hints at their skill bracket. -->
+                        <Border.Effect>
+                            <DropShadowEffect Color="{Binding BedwarsLevel, Converter={StaticResource LevelToBrush}}"
+                                               ShadowDepth="0" BlurRadius="28" Opacity="1"/>
+                        </Border.Effect>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#1B1D22" Offset="0"/>
+                                <GradientStop Color="#131418" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid Margin="16,14">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Header: title, name/rank, skin bust portrait -->
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock x:Name="StatCardOverviewText" FontSize="9" FontWeight="Bold" Foreground="{StaticResource MutedBrush}"/>
+                                        <TextBlock FontSize="19" FontWeight="Bold" Margin="0,1,0,0"
+                                                   ><Run Text="{Binding RankPrefix}" Foreground="{Binding RankColorHex, Converter={StaticResource HexToBrush}}"
+                                                   /><Run Text="{Binding RankPlus}" FontSize="14" Foreground="{Binding RankPlusColorHex, Converter={StaticResource HexToBrush}}"
+                                                   /><Run Text="{Binding RankSuffix}" Foreground="{Binding RankColorHex, Converter={StaticResource HexToBrush}}"
+                                                   /><Run Text="{Binding Name}" Foreground="{Binding RankColorHex, Converter={StaticResource HexToBrush}}"
+                                                   /><Run Text="{Binding GuildTagDisplay}" FontSize="14" Foreground="{Binding GuildTagColorHex, Converter={StaticResource HexToBrush}}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10,0,0,0">
+                                    <Grid Width="54" Height="48">
+                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontWeight="Bold" FontSize="14"
+                                                   Foreground="{Binding BedwarsLevel, Converter={StaticResource LevelToBrush}}"
+                                                   Text="{Binding BedwarsLevel, StringFormat={}{0:0}}"/>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0,2,0,0">
+                                        <Run x:Name="StatCardStreakLabelRun"/>
+                                        <Run Text="{Binding WinStreakText, Mode=OneWay}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Level progress bar: [652✫] ▬▬▬░░░ [653✫], with the xp readout underneath. -->
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"
+                                               Margin="0,0,8,0" Foreground="{Binding BedwarsLevel, Converter={StaticResource LevelToBrush}}">
+                                        <Run Text="["/><Run Text="{Binding BedwarsLevel, StringFormat={}{0:0}}"/><Run Text="✫]"/>
+                                    </TextBlock>
+                                    <Grid Grid.Column="1" Height="8" VerticalAlignment="Center" ClipToBounds="True">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="{Binding LevelProgress, Converter={StaticResource ProgressToStar}}"/>
+                                            <ColumnDefinition Width="{Binding LevelProgress, Converter={StaticResource ProgressToStar}, ConverterParameter=Invert}"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Grid.ColumnSpan="2" CornerRadius="4" Background="{StaticResource InsetBrush}"/>
+                                        <Border Grid.Column="0" CornerRadius="4" Background="{Binding BedwarsLevel, Converter={StaticResource LevelToBrush}}"/>
+                                    </Grid>
+                                    <TextBlock Grid.Column="2" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"
+                                               Margin="8,0,0,0" Foreground="{Binding NextLevel, Mode=OneWay, Converter={StaticResource LevelToBrush}}">
+                                        <Run Text="["/><Run Text="{Binding NextLevel, Mode=OneWay, StringFormat={}{0:0}}"/><Run Text="✫]"/>
+                                    </TextBlock>
+                                </Grid>
+                                <TextBlock Text="{Binding LevelProgressText, Mode=OneWay}" FontSize="11"
+                                           Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
+                            </StackPanel>
+
+                            <Border Grid.Row="2" Height="1" Margin="0,8,0,6">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#FB101C" Offset="0"/>
+                                        <GradientStop Color="#002B2E35" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+
+                            <!-- Coins / games / most-played info row -->
+                            <Grid Grid.Row="3" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="StatCardCoinsLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                    <TextBlock Text="{Binding Coins, StringFormat={}{0:N0}}" FontSize="14" FontWeight="Bold"
+                                               HorizontalAlignment="Center" Foreground="#FFD700" Margin="0,1,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="StatCardGamesLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                    <TextBlock Text="{Binding Games, StringFormat={}{0:N0}}" FontSize="14" FontWeight="Bold"
+                                               HorizontalAlignment="Center" Margin="0,1,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="StatCardMostPlayedLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                    <TextBlock Text="{Binding MostPlayedMode}" FontSize="14" FontWeight="Bold"
+                                               HorizontalAlignment="Center" Margin="0,1,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                            <Border Grid.Row="3" Height="1" VerticalAlignment="Bottom" Background="{StaticResource BorderBrushColor}"/>
+
+                            <!-- Full stat breakdown: each row is a made/lost/ratio family, colored green/red/orange. -->
+                            <StackPanel Grid.Row="4" Margin="0,6,0,0">
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardWinsLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding Wins, StringFormat={}{0:N0}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource StatMadeBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardLossesLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding Losses, StringFormat={}{0:N0}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource StatLostBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardWLRatioLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding Wlr, StringFormat={}{0:0.00}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource AccentBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource BorderBrushColor}" Margin="0,1"/>
+
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardFinalKillsLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding FinalKills, StringFormat={}{0:N0}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource StatMadeBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardFinalDeathsLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding FinalDeaths, StringFormat={}{0:N0}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource StatLostBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardFDRatioLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding Fkdr, StringFormat={}{0:0.00}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource AccentBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource BorderBrushColor}" Margin="0,1"/>
+
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardKillsLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding Kills, StringFormat={}{0:N0}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource StatMadeBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardDeathsLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding Deaths, StringFormat={}{0:N0}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource StatLostBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardKDRatioLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding Kdr, StringFormat={}{0:0.00}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource AccentBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Border Height="1" Background="{StaticResource BorderBrushColor}" Margin="0,1"/>
+
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardBedsBrokenLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding BedsBroken, StringFormat={}{0:N0}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource StatMadeBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardBedsLostLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding BedsLost, StringFormat={}{0:N0}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource StatLostBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="StatCardBBBLLabel" Style="{StaticResource HintText}" HorizontalAlignment="Center" Margin="0"/>
+                                        <TextBlock Text="{Binding Bblr, StringFormat={}{0:0.00}}" FontSize="14" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" Foreground="{StaticResource AccentBrush}" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <TextBlock x:Name="CardStatusText" Style="{StaticResource HintText}"
+                               HorizontalAlignment="Center" TextAlignment="Center" Width="560"
+                               Margin="0,10,0,0"/>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem x:Name="TabPlayerLookup">
+            <!-- Two-column body -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left column: connection settings -->
+                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionLabel}">
+                                <Run Text="▎" Foreground="{StaticResource AccentBrush}"/>
+                                <Run x:Name="ApiKeyLabelRun"/>
+                            </TextBlock>
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid Grid.Column="0">
+                                    <PasswordBox x:Name="ApiKeyPasswordBox" Style="{StaticResource ModernPasswordBox}"/>
+                                    <TextBox x:Name="ApiKeyTextBox" Style="{StaticResource ModernTextBox}"
+                                             Margin="0" Visibility="Collapsed"/>
+                                </Grid>
+                                <Button Grid.Column="1" x:Name="PasteApiKeyButton" Style="{StaticResource PasteButton}"
+                                        Margin="8,0,0,0" ToolTip="Paste from clipboard"
+                                        Click="PasteApiKeyButton_Click"/>
+                                <ToggleButton Grid.Column="2" x:Name="ApiKeyVisibilityToggle" Style="{StaticResource EyeToggle}"
+                                              Margin="8,0,0,0" ToolTip="Show/Hide"
+                                              Checked="ApiKeyVisibilityToggle_Checked" Unchecked="ApiKeyVisibilityToggle_Unchecked"/>
+                            </Grid>
+                            <TextBlock x:Name="ApiKeyHintText" Style="{StaticResource HintText}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionLabel}">
+                                <Run Text="▎" Foreground="{StaticResource AccentBrush}"/>
+                                <Run x:Name="OwnUsernameLabelRun"/>
+                            </TextBlock>
+                            <TextBox x:Name="OwnUsernameBox" Style="{StaticResource ModernTextBox}"/>
+                            <TextBlock x:Name="OwnUsernameHintText" Style="{StaticResource HintText}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionLabel}">
+                                <Run Text="▎" Foreground="{StaticResource AccentBrush}"/>
+                                <Run x:Name="LogPathLabelRun"/>
+                            </TextBlock>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" x:Name="LogPathBox" Style="{StaticResource ModernTextBox}"/>
+                                <Button Grid.Column="1" x:Name="BrowseButton" Style="{StaticResource SecondaryButton}"
+                                        Margin="8,6,0,0" Click="BrowseButton_Click"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Right column: overlay appearance -->
+                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource SectionLabel}">
+                                    <Run Text="▎" Foreground="{StaticResource AccentBrush}"/>
+                                    <Run x:Name="OpacityLabelRun"/>
+                                </TextBlock>
+                                <TextBlock Grid.Column="1" x:Name="OpacityValueText" Text="80%" Foreground="{StaticResource AccentBrush}" FontWeight="Bold"/>
+                            </Grid>
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Slider Grid.Column="0" x:Name="OpacitySlider" Style="{StaticResource ModernSlider}"
+                                        Minimum="0.2" Maximum="1.0" ValueChanged="OpacitySlider_ValueChanged"/>
+                                <ToggleButton Grid.Column="1" x:Name="PreviewToggle" Style="{StaticResource ToggleChip}"
+                                              Margin="10,0,0,0" Checked="PreviewToggle_Checked" Unchecked="PreviewToggle_Unchecked"/>
+                            </Grid>
+                            <TextBlock x:Name="OpacityHintText" Style="{StaticResource HintText}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource SectionLabel}">
+                                    <Run Text="▎" Foreground="{StaticResource AccentBrush}"/>
+                                    <Run x:Name="ScaleLabelRun"/>
+                                </TextBlock>
+                                <TextBlock Grid.Column="1" x:Name="ScaleValueText" Text="100%" Foreground="{StaticResource AccentBrush}" FontWeight="Bold"/>
+                            </Grid>
+                            <Slider x:Name="ScaleSlider" Style="{StaticResource ModernSlider}" Margin="0,10,0,0"
+                                    Minimum="0.6" Maximum="2.0" ValueChanged="ScaleSlider_ValueChanged"/>
+                            <TextBlock x:Name="ScaleHintText" Style="{StaticResource HintText}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource SectionLabel}">
+                                    <Run Text="▎" Foreground="{StaticResource AccentBrush}"/>
+                                    <Run x:Name="AutoWhoLabelRun"/>
+                                </TextBlock>
+                                <ToggleButton Grid.Column="1" x:Name="AutoWhoToggle" Style="{StaticResource AppleSwitch}"/>
+                            </Grid>
+                            <TextBlock x:Name="AutoWhoHintText" Style="{StaticResource HintText}"/>
+                            <Button x:Name="AutoWhoTestButton" Style="{StaticResource SecondaryButton}" Padding="14,7"
+                                    Margin="0,10,0,0" HorizontalAlignment="Left" Click="AutoWhoTestButton_Click"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Button x:Name="SaveSettingsButton" Style="{StaticResource PrimaryButton}"
+                            Click="SaveButton_Click" Margin="0,6,0,0"/>
+                </StackPanel>
+            </Grid>
+            </TabItem>
+
+            <TabItem x:Name="TabWindowTools">
+                <StackPanel>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionLabel}">
+                                <Run Text="▎" Foreground="{StaticResource AccentBrush}"/>
+                                <Run x:Name="TargetWindowLabelRun"/>
+                            </TextBlock>
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="SelectProcessButton" Grid.Column="0"
+                                        Style="{StaticResource SecondaryButton}" Padding="16,8" Height="34"
+                                        Click="SelectProcessButton_Click"/>
+                                <TextBlock Grid.Column="1" x:Name="SelectedWindowText"
+                                           VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"
+                                           Foreground="{StaticResource MutedBrush}"/>
+                            </Grid>
+                            <TextBlock x:Name="SelectProcessHintText" Style="{StaticResource HintText}"/>
+
+                            <Popup x:Name="ProcessPickerPopup" PlacementTarget="{Binding ElementName=SelectProcessButton}"
+                                   Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
+                                <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrushColor}"
+                                        BorderThickness="1" CornerRadius="6" Padding="4" MinWidth="360" MaxHeight="260">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ListBox x:Name="ProcessListBox" Background="Transparent" BorderThickness="0"
+                                                 Foreground="{StaticResource TextBrush}" DisplayMemberPath="DisplayName"
+                                                 SelectionChanged="ProcessListBox_SelectionChanged">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Padding" Value="10,8"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBoxItem">
+                                                                <Border x:Name="Bd" Background="Transparent" CornerRadius="4"
+                                                                        Padding="{TemplateBinding Padding}">
+                                                                    <ContentPresenter/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="Bd" Property="Background" Value="#26FB101C"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                        </ListBox>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionLabel}">
+                                <Run Text="▎" Foreground="{StaticResource AccentBrush}"/>
+                                <Run x:Name="WindowBorderLabelRun"/>
+                            </TextBlock>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button x:Name="MakeBorderlessButton" Style="{StaticResource SecondaryButton}" Padding="18,9"
+                                        Click="BorderlessButton_Click"/>
+                                <Button x:Name="BorderlessFullscreenButton" Style="{StaticResource SecondaryButton}" Margin="10,0,0,0" Padding="18,9"
+                                        Click="FullscreenBorderlessButton_Click"/>
+                                <Button x:Name="RestoreWindowButton" Style="{StaticResource SecondaryButton}" Margin="10,0,0,0" Padding="18,9"
+                                        Click="RestoreWindowButton_Click"/>
+                            </StackPanel>
+                            <TextBlock x:Name="WindowToolStatusText" Style="{StaticResource HintText}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </TabItem>
+            </TabControl>
+        </Grid>
+    </Grid>
+</Window>

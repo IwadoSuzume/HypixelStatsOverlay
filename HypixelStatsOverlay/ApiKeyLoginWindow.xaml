@@ -1,0 +1,162 @@
+<Window x:Class="HypixelStatsOverlay.ApiKeyLoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Sign in with Microsoft to get a Hypixel API Key"
+        Height="820" Width="1080"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="CanMinimize"
+        Icon="Assets/logo.ico"
+        Background="#0B0C0E">
+    <Window.Resources>
+        <!-- Same FACEIT-style palette as MainWindow/OverlayWindow - flat near-black surfaces, sharp
+             corners, one signature accent - so this popup doesn't look like a different app. -->
+        <SolidColorBrush x:Key="CardBrush" Color="#1B1D22"/>
+        <SolidColorBrush x:Key="BorderBrushColor" Color="#2B2E35"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#8B1E28"/>
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#A0474F"/>
+        <SolidColorBrush x:Key="AccentPressedBrush" Color="#681716"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#F2F3F5"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#82868F"/>
+
+        <Style x:Key="UseKeyButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentPressedBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Custom title bar buttons, since WindowStyle="None" drops the native ones entirely -
+             identical templates to MainWindow's TitleBarButton/TitleBarCloseButton. -->
+        <Style x:Key="TitleBarButton" TargetType="Button">
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1FFFFFFF"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TitleBarCloseButton" TargetType="Button" BasedOn="{StaticResource TitleBarButton}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#E81123"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Layer 1: the same diagonal-cut rose accent slabs as MainWindow's top-right corner,
+             scaled for this window's wider 1080px canvas. -->
+        <Canvas ClipToBounds="True">
+            <Polygon Points="780,-40 1140,-40 1140,220 920,220" Opacity="0.10">
+                <Polygon.Fill>
+                    <SolidColorBrush Color="#FB101C"/>
+                </Polygon.Fill>
+            </Polygon>
+            <Polygon Points="920,-40 1140,-40 1140,140 1000,140" Opacity="0.14">
+                <Polygon.Fill>
+                    <SolidColorBrush Color="#FB101C"/>
+                </Polygon.Fill>
+            </Polygon>
+        </Canvas>
+
+        <!-- Layer 2: custom title bar (replaces the native one - WindowStyle="None"), same layout as
+             MainWindow's: logo/name on the left, a transparent drag handle in the middle, window
+             controls on the right. No tray/language buttons - this is a modal dialog, not the main window. -->
+        <Grid VerticalAlignment="Top" Height="38" Panel.ZIndex="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
+                <Image Source="Assets/logo.png" Width="20" Height="20" Stretch="Uniform" Margin="0,0,8,0"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                <TextBlock Text="WitheredRose" FontSize="12" FontWeight="Bold" Foreground="{StaticResource MutedBrush}"/>
+            </StackPanel>
+            <Rectangle Grid.Column="1" Fill="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"/>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="&#xE921;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource TitleBarButton}"
+                        Click="MinimizeButton_Click"/>
+                <Button Content="&#xE8BB;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource TitleBarCloseButton}"
+                        Click="CloseButton_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Layer 3: content, pushed below the custom title bar. -->
+        <Grid Margin="0,38,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrushColor}"
+                    BorderThickness="0,0,0,1" Padding="16,10">
+                <TextBlock Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" FontSize="12">
+                    Sign in to developer.hypixel.net with your Microsoft account in the page below. Your password is only ever typed into Microsoft's own official page - this app never reads or stores it.
+                    Once signed in, open the API Key page and this app will automatically detect the key shown there.
+                </TextBlock>
+            </Border>
+
+            <Border x:Name="DetectedKeyBar" Grid.Row="1" Background="#1A2B1E" BorderBrush="#2E5C3A" BorderThickness="0,0,0,1"
+                    Padding="16,10" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="API Key detected:" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <TextBlock x:Name="DetectedKeyText" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"
+                               Margin="6,0,16,0" FontFamily="Consolas"/>
+                    <Button Content="Use This Key" Style="{StaticResource UseKeyButton}"/>
+                </StackPanel>
+            </Border>
+
+            <wv2:WebView2 x:Name="Browser" Grid.Row="2"/>
+        </Grid>
+    </Grid>
+</Window>

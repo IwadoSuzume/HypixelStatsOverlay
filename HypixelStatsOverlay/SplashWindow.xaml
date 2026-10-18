@@ -1,0 +1,36 @@
+<Window x:Class="HypixelStatsOverlay.SplashWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WitheredRose" Width="500" Height="340"
+        WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False"
+        Topmost="True" WindowStartupLocation="CenterScreen"
+        AllowsTransparency="True" Background="Transparent">
+    <!-- Content sits inset from the window edge so the breathing glow has room to render without
+         being clipped by the window's own bounds. -->
+    <Grid Margin="40">
+        <!-- Glow: a solid-orange copy of the card, blurred and sat behind it. A plain Gaussian blur
+             (BlurEffect) on a solid color spreads that color's own alpha rather than compositing a
+             shadow, so it stays true orange instead of the muddy red DropShadowEffect produced here. -->
+        <Border x:Name="GlowLayer" Background="#FB101C" CornerRadius="4" Opacity="0.55">
+            <Border.Effect>
+                <BlurEffect x:Name="GlowBlur" Radius="18"/>
+            </Border.Effect>
+        </Border>
+        <Border BorderBrush="#2B2E35" BorderThickness="1" Background="#0B0C0E" CornerRadius="4">
+            <Grid>
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <Image x:Name="LogoImage" Source="Assets/logo.png" Width="150" Height="150"
+                           Stretch="Uniform" RenderTransformOrigin="0.5,0.5" Opacity="0"
+                           RenderOptions.BitmapScalingMode="HighQuality">
+                        <Image.RenderTransform>
+                            <ScaleTransform x:Name="LogoScale" ScaleX="0.7" ScaleY="0.7"/>
+                        </Image.RenderTransform>
+                    </Image>
+                    <Border Width="205" Height="5" Background="#131418" Margin="0,14,0,0" ClipToBounds="True">
+                        <Border x:Name="ProgressFill" Background="#8B1E28" HorizontalAlignment="Left" Width="0"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
